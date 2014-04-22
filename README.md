@@ -1,6 +1,9 @@
 # GV::Valley
 
-Green Valley Layer 1
+Micro Private PaaS with Ruby.
+Heavily influenced from dokku and flynn, also uses several flynn components. You
+should use flynn instead, this is a distributed Ruby experiment which is not for
+production use.
 
 ## Installation
 
@@ -18,7 +21,13 @@ Or install it yourself as:
 
 ## Usage
 
-gv-valley run
+    $ gv-valley run # runs valley server
+    
+## Todo
+
+- Write more tests
+- Documentation
+
 
 ## Contributing
 

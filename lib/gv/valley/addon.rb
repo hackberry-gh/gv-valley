@@ -32,9 +32,8 @@ module GV
       def create app_name
         @app_name = app_name
         addon_name = "#{@name}.#{app_name}"
-        unless ps? addon_name
-          pipe "docker run --name #{addon_name} -d -p #{self.external_ip}::#{PORT} -e PORT=#{PORT} #{self.params} #{self.image} #{self.cmd}"
-        end
+        return nil if ps? addon_name
+        pipe "docker run --name #{addon_name} -d -p #{self.external_ip}::#{self.class::PORT} -e PORT=#{self.class::PORT} #{self.params} #{self.image} #{self.cmd}"
       end
       
       def destroy app_name
@@ -53,7 +52,7 @@ module GV
       def port app_name
         @app_name = app_name
         addon_name = "#{@name}.#{app_name}"
-        container_port addon_name, self.external_ip, PORT
+        container_port addon_name, self.external_ip, self.class::PORT
       end
       
       

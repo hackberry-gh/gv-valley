@@ -3,21 +3,14 @@ require 'gv/valley/addon'
 
 module GV
   module Addons
-    class Etcd < GV::Valley::Addon
+    class Memcached < GV::Valley::Addon
   
       PORT = 4001
   
       CONTAINER_DIR="/data/db"    
   
-      def image; "flynn/etcd" end
+      def image; "bacongobbler/memcached" end
   
-      def params 
-        "-v #{@home}/#{@name}/#{@app_name}:#{CONTAINER_DIR}:rw"
-      end
-      
-      def cmd
-        "--name=#{@app_name} -data-dir=#{CONTAINER_DIR}"
-      end
   
       def url app_name
         @app_name = app_name
@@ -26,7 +19,7 @@ module GV
   
       def create app_name
         super app_name
-        self.class.space.write([@name.to_sym,@app_name,"http://#{self.external_ip}:#{port(app_name)}",self.external_ip])    
+        self.class.space.write([@name.to_sym,@app_name,"#{self.external_ip}:#{port(app_name)}",self.external_ip])    
       end
   
       def destroy app_name

@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.version       = GV::Valley::VERSION
   spec.authors       = ["Onur Uyar"]
   spec.email         = ["me@onuruyar.com"]
-  spec.summary       = %q{Green Valley Core Lib}
+  spec.summary       = %q{Micro Private PaaS with Ruby}
   spec.homepage      = ""
   spec.license       = "MIT"
 
@@ -21,6 +21,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake"
   spec.add_development_dependency "minitest"
   spec.add_dependency 'goliath'
+  spec.add_dependency 'etcd'      
   spec.add_dependency 'gv-common'    
   spec.add_dependency 'gv-bedrock'    
 end

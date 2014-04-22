@@ -282,3 +282,38 @@ command :'addons:create' do |c|
     DRb.stop_service    
   end
 end
+
+command :'addons:run' do |c|
+  c.syntax = 'valley addons:run NAME APP_NAME CMD'
+  c.description = 'runs method on addon service'
+  c.action do |args, options|
+    
+    DRb.start_service   
+    addon = args.shift
+    app_name = args.shift    
+    cmd = args.shift        
+    
+    require "gv/addons/#{addon}"
+    addon_service = "GV::Addons::#{addon.classify}".constantize.service
+    puts addon_service.public_send(cmd, app_name)
+    
+    DRb.stop_service    
+  end
+end
+
+command :'addons:destroy' do |c|
+  c.syntax = 'valley addons:destroy NAME APP_NAME'
+  c.description = 'destroys addon service'
+  c.action do |args, options|
+    
+    DRb.start_service   
+    addon = args.shift
+    app_name = args.shift    
+    
+    require "gv/addons/#{addon}"
+    addon_service = "GV::Addons::#{addon.classify}".constantize.service
+    addon_service.destroy app_name
+    
+    DRb.stop_service    
+  end
+end
