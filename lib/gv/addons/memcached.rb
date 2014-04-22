@@ -5,7 +5,7 @@ module GV
   module Addons
     class Memcached < GV::Valley::Addon
   
-      PORT = 4001
+      PORT = 11211
   
       CONTAINER_DIR="/data/db"    
   
