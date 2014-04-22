@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+
+require 'gv/common/cli/server'
+GV::Common::CLI::Server.gen "valley", %w(gv/valley/etcd gv/valley/file_server gv/valley/runner gv/valley/deployer gv/valley/balancer gv/addons/postgresql)

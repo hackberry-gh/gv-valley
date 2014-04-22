@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+function config {
+    retval=`gv-bedrock service gv/bedrock/config get "$1"`
+    echo "$retval"
+}
+
+gv_user=$(config user)
+gv_home=$(config home)
+
+repo=$1; app="${repo%.*}"; rev=$2
+
+mkdir -p $gv_home/$app
+
+#file_server_url=`gv-valley service file_server url`
+
+cat | docker run -i -v $gv_home/$app/cache:/tmp/cache:rw -a stdin -a stdout -a stderr flynn/slugbuilder - > $gv_home/$app/slug.tgz #$file_server_url/$app/slug.tgz
+
+valley apps:deploy $app --trace
+valley balancer:reload $app --trace

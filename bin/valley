@@ -1,0 +1,284 @@
+#!/usr/bin/env ruby
+
+$stdout.sync = true
+$stderr.sync = true
+
+require "gv/valley"
+require "commander/import"
+
+require 'gv/valley/app'
+require 'gv/valley/deployer'    
+require 'gv/valley/runner'
+require 'gv/valley/balancer'
+require 'sticks/pipe'    
+
+program :name, "Green Valley"
+program :version, '0.0.1'
+program :description, 'Green Valley CLI'
+
+def restart_app app
+  deployer = GV::Valley::Deployer.service
+  deployer.stop app, &Sticks::Pipe::Blocks.stream
+  deployer.start app
+end
+
+##
+# Apps API
+
+command :'apps:deploy' do |c|
+  c.syntax = 'valley apps:deploy APP_NAME'
+  c.description = 'deploys app'
+  c.action do |args, options|
+    
+    DRb.start_service    
+    service = GV::Valley::Deployer.random_service
+    service.deploy args.first, &Sticks::Pipe::Blocks.stream
+    DRb.stop_service    
+  end
+end
+
+command :'apps:config' do |c|
+  c.syntax = 'valley apps:config APP_NAME'
+  c.description = 'shows app config'
+  c.action do |args, options|
+
+    DRb.start_service    
+    puts GV::Valley::App.find!(args.first)['config']
+    DRb.stop_service    
+  end
+end
+
+command :'apps:config add' do |c|
+  c.syntax = 'valley apps:config add APP_NAME KEY=VALUE [KEY=VALUE]'
+  c.description = 'adds item to app config'
+  c.action do |args, options|
+
+    DRb.start_service    
+    
+    name = args.shift
+    config = Hash[args.map{|kv| kv.split("=")}]
+    app = GV::Valley::App.find!(name)
+    app["config"].update(config)
+    app.save
+    
+    restart_app app
+    
+    DRb.stop_service    
+  end
+end
+
+command :'apps:config remove' do |c|
+  c.syntax = 'valley apps:config remove APP_NAME KEY [KEY]'
+  c.description = 'removes item from app config'
+  c.action do |args, options|
+
+    DRb.start_service    
+    
+    name = args.shift
+    app = GV::Valley::App.find!(name)
+    args.each do |key|
+      app["config"].delete(key)
+    end
+    app.save
+    
+    restart_app app
+    
+    DRb.stop_service    
+  end
+end
+
+command :'apps:ps' do |c|
+  c.syntax = 'valley apps:ps APP_NAME'
+  c.description = 'shows app processes'
+  c.action do |args, options|
+  
+    DRb.start_service    
+    puts GV::Valley::App.find!(args.first)['ps'].map{|type,ps| {type => ps['scale']} }
+    DRb.stop_service     
+  end
+end
+
+command :'apps:ps scale' do |c|
+  c.syntax = 'valley apps:ps scale APP_NAME TYPE=SCALE [TYPE=SCALE]'
+  c.description = 'shows app processes'
+  c.action do |args, options|
+    
+    DRb.start_service    
+
+    name = args.shift
+    ps = Hash[args.map{|kv| kv.split("=")}]
+    app = GV::Valley::App.find!(name)
+    ps.each do |key,scale|
+      if app['ps'][key]
+        app['ps'][key]['scale'] = scale.to_i
+      else
+        error "Process type #{key} not found"
+      end
+    end
+    app.save
+    restart_app app
+
+    DRb.stop_service     
+  end
+end
+
+command :'apps:domains' do |c|
+  c.syntax = 'valley apps:domains APP_NAME'
+  c.description = 'shows app domains'
+  c.action do |args, options|
+
+    DRb.start_service    
+    puts GV::Valley::App.find!(args.first)['domains']
+    DRb.stop_service     
+  end
+end
+
+command :'apps:domains add' do |c|
+  c.syntax = 'valley apps:domains add APP_NAME DOMAIN [DOMAIN]'
+  c.description = 'adds item to app domains'
+  c.action do |args, options|
+
+    DRb.start_service    
+    
+    name = args.shift
+    app = GV::Valley::App.find!(name)
+    domains = args - GV::Valley::App.all.map{|a| a["domains"]}.flatten
+    app["domains"] = (app["domains"] + domains).compact.uniq
+    app.save
+    
+    GV::Valley::Balancer.service.reload &Sticks::Pipe::Blocks.stream
+    
+    DRb.stop_service    
+  end
+end
+
+command :'apps:domains remove' do |c|
+  c.syntax = 'valley apps:domains remove APP_NAME DOMAIN [DOMAIN]'
+  c.description = 'removes item from app domains'
+  c.action do |args, options|
+    
+    DRb.start_service    
+    
+    name = args.shift
+    app = GV::Valley::App.find!(name)
+    app["domains"] = app["domains"] - args
+    app.save
+    
+    GV::Valley::Balancer.service.reload &Sticks::Pipe::Blocks.stream
+    
+    DRb.stop_service    
+  end
+end
+
+command :'apps:run' do |c|
+  c.syntax = 'valley apps:run APP_NAME CMD'
+  c.description = 'runs cmd on app'
+  c.action do |args, options|
+ 
+    DRb.start_service    
+    service = GV::Valley::Runner.random_service
+    name = args.shift
+    cmd = args.join(" ")
+    block = cmd =~ Sticks::Pipe::INTERACTIVE_COMMANDS ? Sticks::Pipe::Blocks.interactive : Sticks::Pipe::Blocks.stream
+    service.run name, cmd, &block
+    DRb.stop_service    
+  end
+end
+
+command :'apps:logs' do |c|
+  c.syntax = 'valley apps:logs APP_NAME <PS>'
+  c.description = 'runs cmd on app'
+  c.option '-f','--follow', String, 'streams log'
+  c.action do |args, options|
+
+    DRb.start_service    
+    name = args.shift
+    app = GV::Valley::App.find!(name)
+    ps = args.shift
+    psname = "#{name}.#{ps}"
+    
+    #  debug GV::Valley::Deployer.space.read_all([:ps,/#{psname}/,nil,nil])
+    
+    tuple = [:ps, /#{psname}/, nil, nil ]
+    block = options.follow ? Sticks::Pipe::Blocks.stream : Sticks::Pipe::Blocks.capture    
+    (GV::Valley::Deployer.space.read_all(tuple) rescue []).each do |h|
+      h[2].logs psname,options.follow, &block
+    end
+    
+    DRb.stop_service    
+  end
+end
+
+command :'apps:logs' do |c|
+  c.syntax = 'valley apps:logs APP_NAME <PS>'
+  c.description = 'runs cmd on app'
+  c.option '-f','--follow', String, 'streams log'
+  c.action do |args, options|
+
+    DRb.start_service    
+    name = args.shift
+    app = GV::Valley::App.find!(name)
+    ps = args.shift
+    psname = "#{name}.#{ps}"
+    
+    #  debug GV::Valley::Deployer.space.read_all([:ps,/#{psname}/,nil,nil])
+    
+    tuple = [:ps, /#{psname}/, nil, nil ]
+    block = options.follow ? Sticks::Pipe::Blocks.stream : Sticks::Pipe::Blocks.capture    
+    (GV::Valley::Deployer.space.read_all(tuple) rescue []).each do |h|
+      h[2].logs psname,options.follow, &block
+    end
+    
+    DRb.stop_service    
+  end
+end
+
+command :'apps:destroy' do |c|
+  c.syntax = 'valley apps:destroy APP_NAME'
+  c.description = 'destroys app'
+  c.action do |args, options|
+
+    DRb.start_service    
+
+    name = args.shift
+    app = GV::Valley::App.find!(name)
+    
+    deployer = GV::Valley::Deployer.service
+    deployer.stop app, &Sticks::Pipe::Blocks.stream
+
+    app.delete
+    
+    DRb.stop_service    
+  end
+end
+
+command :'balancer:reload' do |c|
+  c.syntax = 'valley balancer:reload'
+  c.description = 'reloads haproxy config'
+  c.action do |args, options|
+
+    DRb.start_service    
+
+    balancer = GV::Valley::Balancer.service
+    balancer.reload &Sticks::Pipe::Blocks.stream
+    
+    DRb.stop_service    
+  end
+end
+
+command :'addons:create' do |c|
+  c.syntax = 'valley addons:create NAME APP_NAME'
+  c.description = 'creates addon service'
+  c.action do |args, options|
+    
+    DRb.start_service   
+    addon = args.shift
+    app_name = args.shift    
+    
+    require "gv/addons/#{addon}"
+    addon_service = "GV::Addons::#{addon.classify}".constantize.service
+    addon_service.create app_name
+    
+    DRb.stop_service    
+  end
+end
