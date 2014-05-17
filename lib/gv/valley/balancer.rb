@@ -31,9 +31,12 @@ module GV
           end
           
           backend << "backend b_#{app["name"]}\n"
-          app["ps"]["web"]["containers"].each do |container|
-            host = container['HostConfig']['PortBindings']["#{App::PORT}/tcp"].first
-            backend << "#{INDENT}server srv_#{container['ID'][0..6]} #{host['HostIp']}:#{host['HostPort']}\n"
+          app["ps"].select{|k,v| k =~ /web/}.each do |ps,pdata|
+            pdata['containers'].each do |container|
+            # app["ps"]["web"]["containers"].each do |container|
+              host = container['HostConfig']['PortBindings']["#{App::PORT}/tcp"].first
+              backend << "#{INDENT}server srv_#{container['ID'][0..6]} #{host['HostIp']}:#{host['HostPort']}\n"
+            end
           end
           
         end

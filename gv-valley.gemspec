@@ -23,5 +23,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'goliath'
   spec.add_dependency 'etcd'      
   spec.add_dependency 'gv-common'    
-  spec.add_dependency 'gv-bedrock'    
+  spec.add_dependency 'gv-bedrock', '~> 0.0.2'  
 end

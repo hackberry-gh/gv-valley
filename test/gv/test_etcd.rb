@@ -24,7 +24,7 @@ module GV
         
         # clear all services
         GV::Bedrock::Service.space.read_all([nil,nil,nil,nil]).each do |t|
-          GV::Bedrock::Service.space.take(t)
+          GV::Bedrock::Service.space.take(t,0) rescue nil
         end
         
         DRb.stop_service

@@ -61,7 +61,8 @@ module GV
         def default_config name
           config = {
             "SLUG_URL" => "#{GV::Valley::FileServer.service.url}/#{name}/slug.tgz",
-            "PORT" => PORT
+            "PORT" => PORT,
+            "RACK_ENV" => "production"
           }
         end
         

@@ -103,7 +103,7 @@ module GV
         runner.run
         at_exit { 
           pid = File.read("/var/run/gv-file_server.pid").chomp.to_i
-          Process.kill("TERM",pid)
+          Process.kill("TERM",pid) rescue nil
           File.delete("/var/run/gv-file_server.pid")          
           File.delete("/var/log/gv-file_server.log")
           File.delete("/var/log/gv-file_server.log_stdout.log")          
